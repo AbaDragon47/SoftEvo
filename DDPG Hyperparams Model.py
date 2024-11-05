@@ -147,7 +147,7 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-!pip install gymnasium
+# !pip install gymnasium
 import numpy as np
 import torch
 import random
