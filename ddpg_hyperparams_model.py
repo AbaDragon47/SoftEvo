@@ -13,17 +13,14 @@ Original file is located at
 # implementation
 # https://www.kaggle.com/code/auxeno/ddpg-rl
 
-import torch
-import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+from collections import deque
+# from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import matplotlib.pyplot as plt
-from ipywidgets import interactive_output, FloatSlider, HBox, VBox
-import ipywidgets as widgets
-from collections import deque
-import random
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 
 # Deterministic actor net
 # state => action
@@ -33,14 +30,15 @@ class Actor(nn.Module):
         self.network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim), # arbitrary middle layers
+            nn.Linear(hidden_dim, hidden_dim),  # arbitrary middle layers
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
-            nn.Tanh() # normalize to (-1, 1)
+            nn.Tanh()  # normalize to (-1, 1)
         )
 
     def forward(self, x):
         return self.network(x)
+
 
 # Critic net evaluates potential of actions (the return of each action) taken by actor net. Used to assess action quality
 # (state, action) => return
@@ -48,15 +46,16 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=64):
         super(Critic, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(state_dim + action_dim, hidden_dim), # takes (state, action) tuple
+            nn.Linear(state_dim + action_dim, hidden_dim),  # takes (state, action) tuple
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 1) # collapse to scalar return value
+            nn.Linear(hidden_dim, 1)  # collapse to scalar return value
         )
 
     def forward(self, x):
         return self.network(x)
+
 
 # OU noise generator class, used to add OU noise to actions
 class OUNoise:
@@ -75,10 +74,12 @@ class OUNoise:
     def sample(self):
         dx = (self.theta * (self.mu - self.state)) + (self.sigma * np.random.randn(self.size))
         self.state += dx
-        return self.state.copy() # Return copy to prevent outside class edits from changing behavior
+        return self.state.copy()  # Return copy to prevent outside class edits from changing behavior
+
 
 # !!! Ignore (plotting noise)
 plt.style.use('fivethirtyeight')
+
 
 def plot_ou_noise(mu, sigma, theta):
     ou_noise = OUNoise(size=1, mu=mu, sigma=sigma, theta=theta)
@@ -93,15 +94,17 @@ def plot_ou_noise(mu, sigma, theta):
     plt.grid(True)
     plt.show()
 
-# Sliders
-mu_slider = FloatSlider(value=0, min=-1, max=1, step=0.1, description='Mu:')
-sigma_slider = FloatSlider(value=0.1, min=0.01, max=0.5, step=0.01, description='Sigma:')
-theta_slider = FloatSlider(value=0.15, min=0.001, max=0.25, step=0.001, description='Theta:')
+
+# # Sliders
+# mu_slider = FloatSlider(value=0, min=-1, max=1, step=0.1, description='Mu:')
+# sigma_slider = FloatSlider(value=0.1, min=0.01, max=0.5, step=0.01, description='Sigma:')
+# theta_slider = FloatSlider(value=0.15, min=0.001, max=0.25, step=0.001, description='Theta:')
+
 
 # Interactive plot
-out = interactive_output(plot_ou_noise, {'mu': mu_slider, 'sigma': sigma_slider, 'theta': theta_slider})
-ui = HBox([mu_slider, sigma_slider, theta_slider])
-display(ui, out)
+# out = interactive_output(plot_ou_noise, {'mu': mu_slider, 'sigma': sigma_slider, 'theta': theta_slider})
+# ui = HBox([mu_slider, sigma_slider, theta_slider])
+# display(ui, out)
 
 # Buffer of experience tuples D (see artcle)
 class ReplayBuffer:
@@ -109,7 +112,8 @@ class ReplayBuffer:
         capacity = int(capacity)
         num_steps = int(num_steps)
         print(f'N Step Buffer max length: {num_steps}\nBuffer capacity: {capacity}')
-        self.buffer = deque(maxlen=capacity) # Deque buffer for effecient popping, pushing, and iterators from both sides
+        self.buffer = deque(
+            maxlen=capacity)  # Deque buffer for effecient popping, pushing, and iterators from both sides
         self.num_steps = num_steps
         self.gamma = gamma
         self.n_step_buffer = deque(maxlen=num_steps)
@@ -121,7 +125,8 @@ class ReplayBuffer:
 
         if self.num_steps == 1:
             state, action, reward, next_state, terminated, _ = transition
-            self.buffer.append((state, action, reward, next_state, terminated)) # Append without last element of tuple to conform to D
+            self.buffer.append(
+                (state, action, reward, next_state, terminated))  # Append without last element of tuple to conform to D
         else:
             self.n_step_buffer.append(transition)
 
@@ -146,25 +151,54 @@ class ReplayBuffer:
         states, actions, rewards, next_states, dones = zip(*random.sample(self.buffer, batch_size))
         return states, actions, rewards, next_states, dones
 
-
     def __len__(self):
         return len(self.buffer)
+
 
 # Commented out IPython magic to ensure Python compatibility.
 # %pip install gymnasium
 import numpy as np
 import torch
-import random
 import gymnasium as gym
 import time
 import math
+import sys
+import numpy as np
+from mlagents_envs.environment import UnityEnvironment
+from mlagents_envs.exception import UnityWorkerInUseException
+from mlagents_envs.base_env import ActionTuple
+
+def init_unity_env(env_path, show_visuals=True):
+    worker_id = 0
+    while worker_id <= 64:
+        try:
+            env = UnityEnvironment(file_name=env_path, worker_id=worker_id, no_graphics=not show_visuals)
+            env.reset()
+            return env
+        except UnityWorkerInUseException:
+            worker_id += 1
+    sys.exit("All worker IDs are in use. Please ensure no other Unity environments are running.")
+
+env = init_unity_env('/home/ani/SoftEvo/Build/main.x86_64')
+behavior_name = list(env.behavior_specs.keys())[0]
+spec = env.behavior_specs[behavior_name]
 
 class DDPG:
     def __init__(self, config):
         self.device = config['device']
-        self.env = gym.make(config['env_name'])
-        state_dim = np.prod(self.env.observation_space.shape)
-        action_dim = np.prod(self.env.action_space.shape)
+        # self.env = init_unity_env(config['env_name'])
+        #
+        # behavior_name = list(self.env.behavior_specs.keys())[0]
+        # spec = self.env.behavior_specs[behavior_name]
+
+        # state_dim = np.prod(self.env.observation_space.shape)
+        # action_dim = np.prod(self.env.action_space.shape)
+
+        self.env = env
+
+        state_dim = spec.observation_specs[0].shape[0]
+        action_dim = spec.action_spec.continuous_size
+
         self.online_actor = Actor(state_dim, action_dim, config['hidden_dim']).to(self.device)
         self.target_actor = Actor(state_dim, action_dim, config['hidden_dim']).to(self.device)
         self.online_critic = Critic(state_dim, action_dim, config['hidden_dim']).to(self.device)
@@ -175,7 +209,7 @@ class DDPG:
         self.optimizer_critic = torch.optim.Adam(self.online_critic.parameters(), lr=config['lr'])
         self.buffer = ReplayBuffer(config['buffer_capacity'], config['num_steps'], config['gamma'])
         self.noise_generator = OUNoise(size=action_dim, mu=config['ou_mu'],
-                                                      sigma=config['ou_sigma'], theta=config['ou_theta'])
+                                       sigma=config['ou_sigma'], theta=config['ou_theta'])
         self.config = config
 
     # DDPG action selection
@@ -183,7 +217,7 @@ class DDPG:
         with torch.no_grad():
             state_tensor = torch.tensor(state, device=self.device).unsqueeze(0)
             action = self.online_actor(state_tensor).squeeze(0).detach().cpu().numpy()
-            if noise:
+            if noise is not None:
                 return np.clip(action + noise, a_min=-1, a_max=1)
             return action
 
@@ -196,11 +230,11 @@ class DDPG:
     def learn(self):
         # Sample and preprocess experience data
         states, actions, rewards, next_states, dones = self.buffer.sample(self.config['batch_size'])
-        states      = torch.tensor(np.array(states),      dtype=torch.float32, device=self.device)
-        actions     = torch.tensor(np.array(actions),     dtype=torch.float32, device=self.device)
-        rewards     = torch.tensor(np.array(rewards),     dtype=torch.float32, device=self.device).unsqueeze(1)
+        states = torch.tensor(np.array(states), dtype=torch.float32, device=self.device)
+        actions = torch.tensor(np.array(actions), dtype=torch.float32, device=self.device)
+        rewards = torch.tensor(np.array(rewards), dtype=torch.float32, device=self.device).unsqueeze(1)
         next_states = torch.tensor(np.array(next_states), dtype=torch.float32, device=self.device)
-        dones       = torch.tensor(np.array(dones),       dtype=torch.float32, device=self.device).unsqueeze(1)
+        dones = torch.tensor(np.array(dones), dtype=torch.float32, device=self.device).unsqueeze(1)
 
         # Critic loss
         current_action_q = self.online_critic(torch.cat((states, actions), dim=1))
@@ -230,15 +264,41 @@ class DDPG:
         # Logging information
         logs = {'episode_count': 0, 'episodic_reward': 0.0, 'episode_rewards': [], 'start_time': time.time()}
 
-        # Reset episode
-        state, _ = self.env.reset()
+        self.env.reset()
+        def get_state():
+            behavior_name = list(self.env.behavior_specs.keys())[0]
+            decision, terminal = self.env.get_steps(behavior_name)
+
+            return decision.obs[0][0]
+
+        state = get_state()
+        print(f'{state =}')
 
         # Main training loop
         for step in range(1, self.config['total_steps'] + 1):
             # Get action and step in envrionment
             noise = self.noise_generator.sample()
+            print(f'{noise =}')
             action = self.config['action_scale'] * self.select_action(state, noise)
-            next_state, reward, terminated, truncated, _ = self.env.step(action)
+            print(f'{action =}')
+            action_tuple = ActionTuple(continuous=np.array([action]))
+            print(f'{action_tuple =}')
+            self.env.set_actions(behavior_name, action_tuple)
+            self.env.step()
+
+            decision, terminal = self.env.get_steps(behavior_name)
+            print(f'{decision =}, {terminal =}')
+            next_state, reward, terminated, truncated, _ = None, None, None, None, None
+
+            if len(terminal) > 0:  # Check if any agents are in a terminal state
+                next_state = terminal.obs[0][0]  # Final state if terminated
+                reward = terminal.reward[0]
+                terminated = True
+            else:
+                next_state = decision.obs[0][0]  # Next state if not terminated
+                reward = decision.reward[0]
+                terminated = False
+            truncated = terminated
 
             # Update logs
             logs['episodic_reward'] += reward
@@ -251,13 +311,16 @@ class DDPG:
 
             # Reset environment and noise
             if terminated or truncated:
-                state, _ = self.env.reset()
+                self.env.reset()
+                state = get_state()
                 self.noise_generator.reset()
 
                 # Update logs
                 logs['episode_count'] += 1
                 logs['episode_rewards'].append(logs['episodic_reward'])
-                print(f'Episode rewards: {f"nan -> {logs['episode_rewards']}" if math.isnan(logs['episode_rewards'][-1]) else logs['episode_rewards'][-1]}') # logs['episode_rewards'][-1]
+                asdlfjaslfkjasflksfsld = 'episode_rewards'
+                print(
+                    f'Episode rewards: {f"nan -> {logs[asdlfjaslfkjasflksfsld]}" if math.isnan(logs[asdlfjaslfkjasflksfsld][-1]) else logs[asdlfjaslfkjasflksfsld][-1]}')  # logs['episode_rewards'][-1]
                 logs['episodic_reward'] = 0.0
             else:
                 state = next_state
@@ -271,7 +334,8 @@ class DDPG:
             self.soft_update(self.online_actor, self.target_actor, self.config['tau'])
 
             # If mean of last 20 rewards exceed target, end training
-            if len(logs['episode_rewards']) > 0 and np.nanmean(logs['episode_rewards'][-20:]) >= self.config['target_reward']:
+            if len(logs['episode_rewards']) > 0 and np.nanmean(logs['episode_rewards'][-20:]) >= self.config[
+                'target_reward']:
                 break
 
             # if math.isnan(np.mean(logs['episode_rewards'][-20:])):
@@ -298,6 +362,73 @@ class DDPG:
         logs['end_time'] = time.time()
         logs['duration'] = logs['end_time'] - logs['start_time']
         return logs
+
+    # def train(self):
+    #     if self.config['verbose']:
+    #         print("Training agent\n")
+    #
+    #     logs = {'episode_count': 0, 'episodic_reward': 0.0, 'episode_rewards': [], 'start_time': time.time()}
+    #
+    #     # Unity-specific initialization of the environment
+    #     env.reset()  # Be sure this resets your Unity environment
+    #     behavior_name = list(env.behavior_specs.keys())[0]
+    #
+    #     for step in range(1, self.config['total_steps'] + 1):
+    #         # Sample noise and get action
+    #         noise = self.noise_generator.sample()
+    #         action = self.config['action_scale'] * self.select_action(state, noise)
+    #
+    #         # Send action to Unity ML-Agents environment
+    #         env.set_actions(behavior_name, ActionTuple(continuous=np.array([action])))
+    #         env.step()
+    #
+    #         # Get the next observations and rewards
+    #         decision_steps, terminal_steps = env.get_steps(behavior_name)
+    #         if len(terminal_steps.agent_id) > 0:  # Check if the episode has ended
+    #             next_state = terminal_steps.obs[0][0]
+    #             reward = terminal_steps.reward[0]
+    #             terminated = True
+    #         else:
+    #             next_state = decision_steps.obs[0][0]
+    #             reward = decision_steps.reward[0]
+    #             terminated = False
+    #
+    #         logs['episodic_reward'] += reward
+    #         self.buffer.add((state, action, reward, next_state, terminated, False))
+    #
+    #         if terminated:
+    #             state = env.reset()  # Reset the environment after termination
+    #             self.noise_generator.reset()
+    #
+    #             logs['episode_count'] += 1
+    #             logs['episode_rewards'].append(logs['episodic_reward'])
+    #             logs['episodic_reward'] = 0.0
+    #         else:
+    #             state = next_state
+    #
+    #         # Learning step if conditions are met
+    #         if len(self.buffer) > self.config['batch_size'] and step >= self.config['learning_starts']:
+    #             self.learn()
+    #
+    #         # Update target networks
+    #         self.soft_update(self.online_critic, self.target_critic, self.config['tau'])
+    #         self.soft_update(self.online_actor, self.target_actor, self.config['tau'])
+    #
+    #         # Check for early stopping if target reward is reached
+    #         if np.nanmean(logs['episode_rewards'][-20:]) >= self.config['target_reward']:
+    #             break
+    #
+    #         # Print training info
+    #         if self.config['verbose'] and step % 100 == 0:
+    #             print(f"\r--- {100 * step / self.config['total_steps']:.1f}%"
+    #                   f"\t Step: {step:,}"
+    #                   f"\t Mean Reward: {np.nanmean(logs['episode_rewards'][-20:])}"
+    #                   f"\t Episode: {logs['episode_count']:,}"
+    #                   f"\t Duration: {time.time() - logs['start_time']:,.1f}s  ---", end='\n')
+    #
+    #     logs['end_time'] = time.time()
+    #     logs['duration'] = logs['end_time'] - logs['start_time']
+    #     return logs
 
 
 # ### DDPG Config ###
@@ -329,7 +460,7 @@ class DDPG:
 
 def plot_rewards(logs, window=5):
     rewards = logs['episode_rewards']
-    moving_avg_rewards = [np.mean(rewards[max(0, i-window):i+1]) for i in range(len(rewards))]
+    moving_avg_rewards = [np.mean(rewards[max(0, i - window):i + 1]) for i in range(len(rewards))]
 
     plt.figure(figsize=(10, 5))
     plt.plot(rewards, label='Reward per Episode', c='#636EFA')
@@ -341,6 +472,7 @@ def plot_rewards(logs, window=5):
     plt.grid(True)
     plt.show()
 
+
 # print(logs)
 # plot_rewards(logs, window=5)
 
@@ -348,38 +480,45 @@ population_size = 10
 mutation_rate = 0.01
 num_generations = 5
 
-optimized_params = 'total_steps gamma lr hidden_dim batch_size buffer_capacity tau ou_mu ou_sigma ou_theta learning_starts num_steps grad_norm_clip'.split(' ')
+optimized_params = 'total_steps gamma lr hidden_dim batch_size buffer_capacity tau ou_mu ou_sigma ou_theta learning_starts num_steps grad_norm_clip'.split(
+    ' ')
 
-def generate_params_from_noise_value(ou_noise_millions, ou_noise_thousands, ou_noise_hundreds, ou_noise_tens, ou_noise_digit, ou_noise_decimal):
+
+def generate_params_from_noise_value(ou_noise_millions, ou_noise_thousands, ou_noise_hundreds, ou_noise_tens,
+                                     ou_noise_digit, ou_noise_decimal):
     d = {
-        'env_name'       : 'Pendulum-v1',  # Environment name
-        'device'         :   'cpu',  # Device DQN runs on
-        'total_steps'    :  round(ou_noise_millions.sample()[0]),  # Total training steps
-        'target_reward'  :    -200,  # Target reward to stop training at when reached
-        'action_scale' :        2.,  # Gym pendulum's action range is from -2 to +2 (Why OpenAI?)
-        'gamma'          :    abs(ou_noise_decimal.sample()[0]),  # Discount Factor
-        'lr'             :    abs(ou_noise_decimal.sample()[0]),  # Learning rate
-        'hidden_dim'     :    int(round(ou_noise_hundreds.sample()[0])),  # Number of neurons in hidden layers
-        'batch_size'     :    int(round(ou_noise_tens.sample()[0])),  # Batch size used by learner
-        'buffer_capacity':  int(round(ou_noise_millions.sample()[0])),  # Maximum replay buffer capacity
-        'tau'            :   ou_noise_decimal.sample()[0],  # Soft target network update interpolation coefficient
-        'ou_mu'          :      ou_noise_decimal.sample()[0],  # OU noise mean
-        'ou_sigma'       :     ou_noise_decimal.sample()[0],  # OU noise sdev
-        'ou_theta'       :    ou_noise_decimal.sample()[0],  # OU noise reversion rate
-        'learning_starts':     ou_noise_hundreds.sample()[0],  # Begin learning after performing this many steps
-        'num_steps'      :       int(round(ou_noise_digit.sample()[0])),  # Number of steps to unroll Bellman equation by
-        'grad_norm_clip' :      ou_noise_tens.sample()[0],  # Global gradient clipping value
-        'verbose'        :    True,  # Verbose printing
+        'env_name': '/home/ani/SoftEvo/Build/main.x86_64',  # Environment name
+        'device': 'cpu',  # Device DQN runs on
+        'total_steps': round(ou_noise_millions.sample()[0]),  # Total training steps
+        'target_reward': -200,  # Target reward to stop training at when reached
+        'action_scale': 2.,  # Gym pendulum's action range is from -2 to +2 (Why OpenAI?)
+        'gamma': abs(ou_noise_decimal.sample()[0]),  # Discount Factor
+        'lr': int(abs(ou_noise_decimal.sample()[0])),  # Learning rate
+        'hidden_dim': int(round(ou_noise_hundreds.sample()[0])),  # Number of neurons in hidden layers
+        'batch_size': int(round(ou_noise_tens.sample()[0])),  # Batch size used by learner
+        'buffer_capacity': int(round(ou_noise_millions.sample()[0])),  # Maximum replay buffer capacity
+        'tau': ou_noise_decimal.sample()[0],  # Soft target network update interpolation coefficient
+        'ou_mu': ou_noise_decimal.sample()[0],  # OU noise mean
+        'ou_sigma': ou_noise_decimal.sample()[0],  # OU noise sdev
+        'ou_theta': ou_noise_decimal.sample()[0],  # OU noise reversion rate
+        'learning_starts': ou_noise_hundreds.sample()[0],  # Begin learning after performing this many steps
+        'num_steps': int(round(ou_noise_digit.sample()[0])),  # Number of steps to unroll Bellman equation by
+        'grad_norm_clip': ou_noise_tens.sample()[0],  # Global gradient clipping value
+        'verbose': True,  # Verbose printing
     }
     if d['num_steps'] == 0:
         d['num_steps'] = 1
     return d
 
+
 import random
+
+
 def init_population(population_size):
     def generate_individual():
         def get_noise(place):
             return OUNoise(size=1, mu=int(random.random() * place))
+
         ou_noise_millions = get_noise(10_000_000)
         ou_noise_thousands = get_noise(10_000)
         ou_noise_hundreds = get_noise(1000)
@@ -387,23 +526,28 @@ def init_population(population_size):
         ou_noise_digit = get_noise(10)
         ou_noise_decimal = get_noise(1)
 
-        params = generate_params_from_noise_value(ou_noise_millions, ou_noise_thousands, ou_noise_hundreds, ou_noise_tens, ou_noise_digit, ou_noise_decimal)
+        params = generate_params_from_noise_value(ou_noise_millions, ou_noise_thousands, ou_noise_hundreds,
+                                                  ou_noise_tens, ou_noise_digit, ou_noise_decimal)
         return params, DDPG(params)
 
-    result = [ generate_individual() for _ in range(population_size) ]
+    result = [generate_individual() for _ in range(population_size)]
     print(result)
     return result
 
+
 def default_params():
     return {
-        'env_name'       : 'Pendulum-v1',  # Environment name
-        'device'         :   'cpu',  # Device DQN runs on
-        'target_reward'  :    -200,  # Target reward to stop training at when reached
-        'action_scale' :        2.,  # Gym pendulum's action range is from -2 to +2 (Why OpenAI?)
-        'verbose'        :    True,  # Verbose printing
+        'env_name': '/home/ani/SoftEvo/Build/main.x86_64',  # Environment name
+        'device': 'cpu',  # Device DQN runs on
+        'target_reward': -200,  # Target reward to stop training at when reached
+        'action_scale': 2.,  # Gym pendulum's action range is from -2 to +2 (Why OpenAI?)
+        'verbose': True,  # Verbose printing
     }
 
+
 from copy import deepcopy
+
+
 def model_crossover(parent1, parent2, crossover_rate=0.5):
     """
     Performs crossover between two neural networks.
@@ -417,14 +561,15 @@ def model_crossover(parent1, parent2, crossover_rate=0.5):
         nn.Module: The offspring network.
     """
 
-    offspring = deepcopy(parent1) # Create a new network with the same architecture
-    offspring.load_state_dict(parent1.state_dict()) # Initialize with parent1's weights
+    offspring = deepcopy(parent1)  # Create a new network with the same architecture
+    offspring.load_state_dict(parent1.state_dict())  # Initialize with parent1's weights
     for (name1, param1), (name2, param2) in zip(parent1.named_parameters(), parent2.named_parameters()):
         if torch.rand(1) < crossover_rate:
             # Perform crossover for this weight
             mask = torch.rand_like(param1) < 0.5
             offspring.state_dict()[name1].data = torch.where(mask, param1, param2)
     return offspring
+
 
 def crossover(parent1: DDPG, parent2: DDPG | None, mutation_rate: float) -> list[tuple[dict[str, str], DDPG]]:
     num_children = random.randint(1, 5)
@@ -439,6 +584,7 @@ def crossover(parent1: DDPG, parent2: DDPG | None, mutation_rate: float) -> list
                 params[param] += (random.random() * 2 * hyperparam_value_context) - (hyperparam_value_context)
         children.append((params, DDPG(params)))
     return children
+
 
 def filthy_crossover(parent1: DDPG, parent2: DDPG | None, mutation_rate: float) -> list[tuple[dict[str, str], DDPG]]:
     num_children = random.randint(1, 5)
@@ -458,41 +604,51 @@ def filthy_crossover(parent1: DDPG, parent2: DDPG | None, mutation_rate: float) 
         children[-1][1].optimizer_critic = model_crossover(parent1.optimizer_critic, parent2.optimizer_critic)
     return children
 
-import asyncio
+
 def evolve(population_size, mutation_rate, num_generations, filthy=False):
     population = init_population(population_size)
+
+    def handler(params, individual):
+        logs = individual.train()
+        return params, individual, logs
+
     for generation in range(num_generations):
         print(f'Generation {generation + 1}')
         best_accuracy = float('-inf')
         best_individual = None, None
 
-        async def handler(params, individual):
+        # print(population)
+        # with ThreadPoolExecutor() as executor:
+        #     futures = [executor.submit(handler, params, individual) for params, individual in population]
+        #     for future in as_completed(futures):
+        #         params, individual, logs = future.result()
+        #         if logs['episode_rewards'][-1] > best_accuracy:
+        #             best_accuracy = logs['episode_rewards'][-1]
+        #             best_individual = params, individual
+        #
+        # print(f'Best reward in generation {generation + 1}: {best_accuracy}')
+        # print(f'Best individual params: {best_individual[0]}')
+
+        for params, individual in population:
             logs = individual.train()
             if logs['episode_rewards'][-1] > best_accuracy:
                 best_accuracy = logs['episode_rewards'][-1]
                 best_individual = params, individual
 
-        print(population)
-        for params, individual in population:
-            # logs = individual.train()
-            # if logs['episode_rewards'][-1] > best_accuracy:
-            #     best_accuracy = logs['episode_rewards'][-1]
-            #     best_individual = params, individual
-            asyncio.create_task(handler(params, individual))
 
-        print(f'Best reward in generation {generation + 1}: {best_accuracy}')
-        print(f'Best individual params: {best_individual[0]}')
 
         next_generation = []
-        selected = population[:population_size // 2] # Select last half of population to reproduce
+        selected = population[:population_size // 2]  # Select last half of population to reproduce
 
         # Reproduction
         for i in range(0, len(selected), 2):
             _, parent1 = selected[i]
             _, parent2 = selected[i + 1] if i + 1 < len(selected) - 1 else (None, None)
-            children = filthy_crossover(parent1, parent2, mutation_rate) if filthy else crossover(parent1, parent2, mutation_rate)
+            children = filthy_crossover(parent1, parent2, mutation_rate) if filthy else crossover(parent1, parent2,
+                                                                                                  mutation_rate)
             next_generation.extend(children)
 
         population = next_generation
+
 
 evolve(10, .01, 5)
