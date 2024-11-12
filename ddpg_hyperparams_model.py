@@ -111,7 +111,7 @@ class ReplayBuffer:
     def __init__(self, capacity, num_steps=1, gamma=0.99):
         capacity = int(capacity)
         num_steps = int(num_steps)
-        print(f'N Step Buffer max length: {num_steps}\nBuffer capacity: {capacity}')
+
         self.buffer = deque(
             maxlen=capacity)  # Deque buffer for effecient popping, pushing, and iterators from both sides
         self.num_steps = num_steps
@@ -272,22 +272,21 @@ class DDPG:
             return decision.obs[0][0]
 
         state = get_state()
-        print(f'{state =}')
 
         # Main training loop
-        for step in range(1, self.config['total_steps'] + 1):
+        for step in range(1, int(self.config['total_steps']) + 1):
             # Get action and step in envrionment
             noise = self.noise_generator.sample()
             print(f'{noise =}')
             action = self.config['action_scale'] * self.select_action(state, noise)
             print(f'{action =}')
             action_tuple = ActionTuple(continuous=np.array([action]))
-            print(f'{action_tuple =}')
+
             self.env.set_actions(behavior_name, action_tuple)
             self.env.step()
 
             decision, terminal = self.env.get_steps(behavior_name)
-            print(f'{decision =}, {terminal =}')
+
             next_state, reward, terminated, truncated, _ = None, None, None, None, None
 
             if len(terminal) > 0:  # Check if any agents are in a terminal state
@@ -303,7 +302,7 @@ class DDPG:
             # Update logs
             logs['episodic_reward'] += reward
             if math.isnan(logs['episodic_reward']):
-                print(f'{action =}, {reward =}, {next_state =}, {terminated =}, {truncated =}')
+
                 exit(1)
 
             # Push experience to buffer
@@ -339,7 +338,7 @@ class DDPG:
                 break
 
             # if math.isnan(np.mean(logs['episode_rewards'][-20:])):
-            #     print(logs['episode_rewards'])
+            #     print(logs['episode_rewards'])print(logs['episode_rewards'])
             #     print(np.mean(logs['episode_rewards'][-20:]))
             #     breakpoint()
 
@@ -531,7 +530,7 @@ def init_population(population_size):
         return params, DDPG(params)
 
     result = [generate_individual() for _ in range(population_size)]
-    print(result)
+
     return result
 
 
