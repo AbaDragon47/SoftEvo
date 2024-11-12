@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>
+<Node name="lroot" gravity="0 -9.81 0" dt="0.02">
+    <Node name="RequiredPlugins">
+        <RequiredPlugin name="Sofa.Component.Collision.Detection.Algorithm"/> <!-- Needed to use components [BVHNarrowPhase BruteForceBroadPhase CollisionPipeline] -->
+        <RequiredPlugin name="Sofa.Component.Topology.Container.Dynamic"/> <!-- Needed to use components [TetrahedronSetGeometryAlgorithms TetrahedronSetTopologyContainer] -->
+        <RequiredPlugin name="Sofa.Component.IO.Mesh"/> <!-- Needed to use components [MeshGmshLoader MeshOBJLoader SphereLoader] -->
+        <RequiredPlugin name="Sofa.Component.StateContainer"/> <!-- MechanicalObject -->
+        <RequiredPlugin name="Sofa.Component.Collision.Geometry"/> <!-- Needed to use components [LineCollisionModel PointCollisionModel TriangleCollisionModel] -->
+        <RequiredPlugin name="Sofa.Component.Collision.Geometry" /> <!-- TetrahedronCollisionModel -->
+        <RequiredPlugin name="Sofa.Component.Collision.Response.Contact"/> <!-- Needed to use components [CollisionResponse] -->
+    <RequiredPlugin name="Sofa.Component.Collision.Geometry"/> <!-- Needed to use components [SphereCollisionModel] -->
+        <RequiredPlugin name="Sofa.Component.Collision.Detection.Intersection"/> <!-- Needed to use components [DiscreteIntersection] -->
+        <RequiredPlugin name="Sofa.Component.Constraint.Projective"/> <!-- Needed to use components [FixedProjectiveConstraint] -->
+        <RequiredPlugin name="Sofa.Component.MechanicalLoad" /> <!-- DiagonalVelocityDampingForceField -->
+        <RequiredPlugin name="Sofa.Component.LinearSolver.Iterative"/> <!-- Needed to use components [CGLinearSolver] -->
+        <RequiredPlugin name="Sofa.Component.SolidMechanics.FEM.Elastic"/> <!-- Needed to use components [TetrahedralCorotationalFEMForceField] -->
+        <RequiredPlugin name="Sofa.Component.Mass"/> <!-- Needed to use components [DiagonalMass] -->
+        <RequiredPlugin name="Sofa.Component.ODESolver.Backward"/> <!-- Needed to use components [EulerImplicitSolver] -->
+        <RequiredPlugin name="Sofa.Component.Visual"/> <!-- Needed to use components [InteractiveCamera VisualStyle] -->
+        <RequiredPlugin name="Sofa.Component.Mapping.Linear"/> <!-- Needed to use components [BarycentricMapping] -->
+        <RequiredPlugin name="Sofa.GL.Component.Rendering3D"/> <!-- Needed to use components [OglModel] -->
+        <RequiredPlugin name="Sofa.Component.Topology.Container.Constant"/> <!-- Needed to use components [MeshTopology] -->
+    </Node>
+
+    <VisualStyle displayFlags="showVisual  " /> <!--showBehaviorModels showCollisionModels-->
+	<CollisionPipeline name="CollisionPipeline" verbose="0" />
+    <DefaultAnimationLoop/>
+    <BruteForceBroadPhase/>
+    <BVHNarrowPhase/>
+    <CollisionResponse name="collision response" response="PenalityContactForceField" />
+    <DiscreteIntersection/>
+
+    <!-- Mesh Obj -->
+    <MeshOBJLoader name="starLoader" filename="./mesh/sofaMesh.msh" />
+    <!-- <MeshOBJLoader name="loader" filename="C:\floor.obj" handleSeams="1"/> -->
+
+    <Node name="Star" gravity="0 -9.81 0">
+        <EulerImplicitSolver name="cg_odesolver" rayleighStiffness="0.1" rayleighMass="0.1" />
+        <CGLinearSolver name="linear solver" iterations="25" tolerance="1e-09" threshold="1e-09" />
+        <MeshGmshLoader name="meshLoader" filename="./mesh/sofaMesh.msh" />
+        <MechanicalObject name="dofs" src="@meshLoader" />
+        <TetrahedronSetTopologyContainer name="topo" src="@meshLoader" />
+        <TetrahedronSetGeometryAlgorithms template="Vec3" name="GeomAlgo" />
+        <DiagonalMass name="computed using mass density" massDensity="1" />
+        <TetrahedralCorotationalFEMForceField template="Vec3" name="FEM" method="large" poissonRatio="0.3" youngModulus="3000" computeGlobalMatrix="0" />
+        <!-- <FixedProjectiveConstraint name="FixedProjectiveConstraint" indices="800 780 " /> -->
+        <Node name="VisualModel" gravity="0 -9.81 0">
+            <OglModel name="Visual" src="@../meshLoader" />
+            <BarycentricMapping input="@../dofs" output="@Visual" />
+        </Node>
+        <Node name="Surf" gravity="0 -9.81 0">
+            <SphereLoader filename="mesh/liver.sph" />
+            <MechanicalObject name="spheres" position="@[-1].position" />
+            <SphereCollisionModel name="CollisionModel" listRadius="@[-2].listRadius"/>
+            <BarycentricMapping name="sphere mapping" input="@../dofs" output="@spheres" />
+        </Node>
+    </Node>
+</Node>
