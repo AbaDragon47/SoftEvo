@@ -51,16 +51,24 @@ public class MeshDeformer : MonoBehaviour {
 		
 		for (int i = 0; i < armsCount; i++) {
 			
-			float angle = Mathf.Deg2Rad * i * angleIncrement;
+			/*float angle = Mathf.Deg2Rad * i * angleIncrement;
 
 			// The arm will be placed at the calculated armRadius distance from the center.
 			float x = Mathf.Cos(angle) * armRadius; 
 			float z = Mathf.Sin(angle) * armRadius;
 
-			armPositions[i] = new Vector3(x, 0f, z);
+			armPositions[i] = new Vector3(x, 0f, z);*/
+			GameObject[] actuatorObjects = GameObject.FindGameObjectsWithTag("actuator");
 
+			armCenters = new Vector3[actuatorObjects.Length];
+
+			// Store the position of each actuator in armCenters
+			armPositions[i] = actuatorObjects[i].transform.position;
 			Debug.Log("Arm " + i + " position: " + armPositions[i]);
+		
+
 		}
+
 
 		return armPositions;
 	}
@@ -162,7 +170,7 @@ public class MeshDeformer : MonoBehaviour {
 		deformingMesh.vertices = displacedVertices;
 		deformingMesh.RecalculateNormals();
     }
-	void ApplyBendingForce(int armIndex, float bendingForce) {
+	public void ApplyBendingForce(int armIndex, float bendingForce) {
 		Vector3 armDirection = armCenters[armIndex] - meshCenter;
 		for (int i = 0; i < displacedVertices.Length; i++) {
 			if (IsVertexInArm(i, armIndex)) {
