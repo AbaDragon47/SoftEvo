@@ -27,6 +27,7 @@ import torch.nn.functional as F
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=64):
         super(Actor, self).__init__()
+        hidden_dim = int(hidden_dim)
         self.network = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
@@ -45,6 +46,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=64):
         super(Critic, self).__init__()
+        hidden_dim = int(hidden_dim)
         self.network = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),  # takes (state, action) tuple
             nn.ReLU(),
@@ -277,9 +279,7 @@ class DDPG:
         for step in range(1, int(self.config['total_steps']) + 1):
             # Get action and step in envrionment
             noise = self.noise_generator.sample()
-            print(f'{noise =}')
             action = self.config['action_scale'] * self.select_action(state, noise)
-            print(f'{action =}')
             action_tuple = ActionTuple(continuous=np.array([action]))
 
             self.env.set_actions(behavior_name, action_tuple)
@@ -650,4 +650,4 @@ def evolve(population_size, mutation_rate, num_generations, filthy=False):
         population = next_generation
 
 
-evolve(10, .01, 5)
+evolve(10, .01, 20)
