@@ -24,7 +24,7 @@ We present a unique approach by integrating **evolutionary algorithms (EAs)** wi
 | ![Sofa Image](2024-11-15_6.05.43.png) | ![Unity image ](unity.png) |-->
 <p float="left">
   <img src="2024-11-15_6.05.43.png" width="400" />
-  <img src="unity.png" width="600" />
+  <img src="unity.png" width="500" />
 </p>
 
 
