@@ -23,8 +23,8 @@ We present a unique approach by integrating **evolutionary algorithms (EAs)** wi
 | ------- | ------- |
 | ![Sofa Image](2024-11-15_6.05.43.png) | ![Unity image ](unity.png) |-->
 <p float="left">
-  <img src="2024-11-15_6.05.43.png" width="400" />
-  <img src="unity.png" width="500" />
+  <img src="2024-11-15_6.05.43.png" style="width: 40%; height: 300px; object-fit: cover;" />
+  <img src="unity.png" style="width: 40%; height: 300px; object-fit: cover;" />
 </p>
 
 
@@ -57,10 +57,10 @@ We integrated DDPG with an **Evolutionary Framework** by initializing a populati
 <table>
   <tr>
     <td style="width: 50%; text-align: center;">
-      <img src="ppo.png" alt="PPO" style="width: 80%; height: auto;">
+      <img src="ppo.png" alt="PPO" style="width: 80%; height: 300px; object-fit: cover;">
     </td>
     <td style="width: 50%; text-align: center;">
-      <img src="ddpg.png" alt="DDPG" style="width: 80%; height: auto;">
+      <img src="ddpg.png" alt="DDPG" style="width: 80%; height: 300px; object-fit: cover;">
     </td>
   </tr>
   <tr>
@@ -105,18 +105,18 @@ We integrated DDPG with an **Evolutionary Framework** by initializing a populati
 <!--### ![analysis](analysis1.png)
 ### ![analysis](analysis1.png)  -->
 <p float="left">
-  <img src="analysis1.png" width="500" />
-  <img src="analysis2.png" width="500" />
+  <img src="analysis1.png" style="width: 40%; height: 300px; object-fit: cover;" />
+  <img src="analysis2.png" style="width: 40%; height: 300px; object-fit: cover;" />
 </p>
 
 ### **Deep Deterministic Policy Gradient (DDPG)**
-This graph shows the changing **episodic reward** of a **Deep Deterministic Policy Gradient (DDPG)** model as it trains. The core concept behind our approach is inspired by **survival of the fittest**, where we evolve hyperparameters through **random reproduction** and **mutation rates**. This evolutionary process trains multiple models, selecting the best-performing configurations over generations.
+This first graph shows the changing **episodic reward** of a **Deep Deterministic Policy Gradient (DDPG)** model as it trains. The core concept behind our approach is inspired by **survival of the fittest**, where we evolve hyperparameters through **random reproduction** and **mutation rates**. This evolutionary process trains multiple models, selecting the best-performing configurations over generations.
 
 To optimize the DDPG model, we utilized a **replay buffer** that stores tuples of states and actions. These tuples include both the **current state-action pair** and the **next state-action pair**, allowing the model to approximate the expected returns without needing to solve the infinite integral directly. Each agent follows an **Actor-Critic architecture**, where the **Actor** proposes actions based on the current state, and the **Critic** evaluates these actions to optimize policies greedily.
 
 
 **Environment Simulation with Unity ML-Agents:**
-To generate **state-action possibilities** for each model, we used **Unity’s ML-Agents Python library**. This library allows us to simulate complex environments, akin to **OpenAI Gymnasium environments**, within Unity. It also provides visualizations of the training process, helping us observe how each model evolves over time. These visualizations offer valuable insights into the progression and adaptability of each generation of models.
+To generate **state-action possibilities** for each model (second graph), we used **Unity’s ML-Agents Python library**. This library allows us to simulate complex environments, akin to **OpenAI Gymnasium environments**, within Unity. It also provides visualizations of the training process, helping us observe how each model evolves over time. These visualizations offer valuable insights into the progression and adaptability of each generation of models.
 
 ### **Proximal Policy Optimization (PPO)**
 We extended our evolutionary strategy beyond hyperparameters. Instead of solely evolving hyperparameters, we implemented a process where the **policies** or **hyperparameters** of parent models are *crossed randomly* to generate the next generation. This technique aims to combine the strengths of different models to produce superior offspring.
