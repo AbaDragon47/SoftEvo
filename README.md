@@ -19,6 +19,10 @@ We present a unique approach by integrating **evolutionary algorithms (EAs)** wi
 ## Components
 
 ### Figure 1. Unity and SOFA Combined
+| Image 1 | Image 2 |
+| ------- | ------- |
+| ![Alt Text 1](https://github.com/AbaDragon47/SoftEvo/blob/main/2024-11-15_6.05.43.png) | ![Alt Text 2](https://github.com/AbaDragon47/SoftEvo/blob/main/unity.png) |
+
 
 For the development of our soft robotic model, we utilized two primary tools: **Unity** and the **SOFA Framework**.
 
