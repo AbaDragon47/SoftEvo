@@ -2,7 +2,7 @@
 
 **Lead Researcher**: [Aba Onumah](edin.com/in/aba-onumah-63315328b/)  
 **Faculty Advisor**: Dr. Yu Xiang  
-**Team Members**: Anish Reddy, Alle Arjun Krisnan, Jessica Myoungbin Choi, Rohit Penna
+**Team Members**: Anish Reddy, Alle Arjun Krishnan, Jessica Myoungbin Choi, Rohit Penna
 
 ---
 
