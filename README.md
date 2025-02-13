@@ -5,6 +5,8 @@
 **Team Members**: [Anish Reddy Alle](https://www.linkedin.com/in/anish-reddy-alle/), Arjun Krishnan, Jessica Myoungbin Choi, Rohit Penna
 
 ---
+## Poster
+![Poster Image](./poster.png)
 
 ## Introduction and Purpose
 
